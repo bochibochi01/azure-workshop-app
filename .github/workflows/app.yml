@@ -1,0 +1,67 @@
+name: Build and Deploy
+
+on:
+
+  push:
+
+    branches:
+      - main
+
+jobs:
+
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Unit Test
+        run: mvn test
+
+      - name: Package
+        run: mvn clean package
+
+      - name: Copy JAR
+
+        uses: appleboy/scp-action@v0.1.7
+
+        with:
+
+          host: ${{ secrets.VM_HOST }}
+
+          username: ${{ secrets.VM_USER }}
+
+          key: ${{ secrets.VM_PRIVATE_KEY }}
+
+          source: target/*.jar
+
+          target: /opt/workshop
+
+      - name: Restart Service
+
+        uses: appleboy/ssh-action@v1.0.3
+
+        with:
+
+          host: ${{ secrets.VM_HOST }}
+
+          username: ${{ secrets.VM_USER }}
+
+          key: ${{ secrets.VM_PRIVATE_KEY }}
+
+          script: |
+
+            cp /opt/workshop/target/*.jar /opt/workshop/app.jar
+
+            sudo systemctl restart workshop
+
+            sudo systemctl status workshop
